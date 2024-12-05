@@ -1,15 +1,22 @@
-from collections import deque
 import heapq
 
+def sliding_window_max(arr, k):
+    result = []
+    
+    window = [(-arr[i], i) for i in range(k)]
+    heapq.heapify(window)
+    
+    result.append(-window[0][0])
+    
+    for i in range(k, len(arr)):
+        heapq.heappush(window, (-arr[i], i))
+        while window[0][1] <= i - k:
+            heapq.heappop(window)
+        
+        result.append(-window[0][0])
+    
+    return result
 
-def bai12(arr, k):
-    dq = deque()
-    
-    for i in range(len(arr)):
-        print(1)
-    
-
-if __name__ == "__main__":
-    dq = deque()
-    print(dq)
-    
+arr = [1, 2, 3, 6, 4, 5, 2, 3, 6]
+k = 3
+print(sliding_window_max(arr, k))
