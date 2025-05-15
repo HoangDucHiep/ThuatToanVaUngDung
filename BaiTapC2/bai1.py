@@ -12,4 +12,3 @@ if __name__ == "__main__":
     print("=== Tets 2 ===")
     arr2 = [1, 3, 3, 2, 3, 4, 5, 5, 6]
     print(bai1(arr2)) # 6
-    

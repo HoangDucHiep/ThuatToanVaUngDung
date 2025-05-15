@@ -1,5 +1,3 @@
-
-
 from collections import deque
 
 def firstNegativeInWindow(arr, k):

@@ -1,209 +1,178 @@
-import os
-import heapq
-import shutil
+def run_sort(input_file, output_file):
+    def distribute_runs(input_list, run_size):
+        runs = []
+        for i in range(0, len(input_list), run_size):
+            runs.append(input_list[i:i + run_size])
+        return runs
 
-
-def create_runs(input_file, temp_dir, memory_limit=100):
-    """
-    Tạo các run từ file đầu vào và lưu vào thư mục tạm.
-    """
-    if not os.path.exists(temp_dir):
-        os.makedirs(temp_dir)
-
-    runs = []
-    try:
-        with open(input_file, 'r') as input_f:
-            current_run = []
-            for line in input_f:
-                try:
-                    current_run.append(int(line.strip()))
-                except ValueError:
-                    # Bỏ qua các dòng không hợp lệ
-                    continue
-
-                if len(current_run) >= memory_limit:
-                    current_run.sort()
-                    run_file = os.path.join(temp_dir, f'run_{len(runs)}.txt')
-                    with open(run_file, 'w') as run_f:
-                        for item in current_run:
-                            run_f.write(f"{item}\n")
-                    runs.append(run_file)
-                    current_run = []
-
-            # Ghi run cuối cùng nếu còn dữ liệu
-            if current_run:
-                current_run.sort()
-                run_file = os.path.join(temp_dir, f'run_{len(runs)}.txt')
-                with open(run_file, 'w') as run_f:
-                    for item in current_run:
-                        run_f.write(f"{item}\n")
-                runs.append(run_file)
-    except IOError:
-        print(f"Lỗi: Không thể đọc file {input_file}")
-    return runs
-
-
-def merge_two_files(file1, file2, output_file):
-    """
-    Trộn hai file đã sắp xếp và ghi kết quả vào file đầu ra.
-    """
-    try:
-        with open(file1, 'r') as f1, open(file2, 'r') as f2, open(output_file, 'w') as out:
-            line1 = f1.readline().strip()
-            line2 = f2.readline().strip()
-
-            while line1 and line2:
-                try:
-                    val1 = int(line1)
-                    val2 = int(line2)
-
-                    if val1 <= val2:
-                        out.write(f"{val1}\n")
-                        line1 = f1.readline().strip()
-                    else:
-                        out.write(f"{val2}\n")
-                        line2 = f2.readline().strip()
-                except ValueError:
-                    line1 = f1.readline().strip() if not line1 else line1
-                    line2 = f2.readline().strip() if not line2 else line2
-
-            # Ghi các phần tử còn lại
-            while line1:
-                try:
-                    out.write(f"{int(line1)}\n")
-                    line1 = f1.readline().strip()
-                except ValueError:
-                    line1 = f1.readline().strip()
-
-            while line2:
-                try:
-                    out.write(f"{int(line2)}\n")
-                    line2 = f2.readline().strip()
-                except ValueError:
-                    line2 = f2.readline().strip()
-    except IOError:
-        print(f"Lỗi: Không thể ghi hoặc đọc file {output_file}")
-
-
-def natural_merge_sort(input_file, temp_dir, output_file, memory_limit=100):
-    """
-    Phương pháp trộn tự nhiên (Natural Merge).
-    """
-    runs = create_runs(input_file, temp_dir, memory_limit)
-    
-    while len(runs) > 1:
-        new_runs = []
-        for i in range(0, len(runs), 2):
-            if i + 1 < len(runs):
-                merged_file = os.path.join(temp_dir, f'merged_run_{len(new_runs)}.txt')
-                merge_two_files(runs[i], runs[i + 1], merged_file)
-                new_runs.append(merged_file)
+    def merge_runs(run1, run2):
+        result = []
+        i = j = 0
+        while i < len(run1) and j < len(run2):
+            if run1[i] < run2[j]:
+                result.append(run1[i])
+                i += 1
             else:
-                new_runs.append(runs[i])  # Giữ lại run cuối cùng nếu số lượng lẻ
-        runs = new_runs
+                result.append(run2[j])
+                j += 1
+        result.extend(run1[i:])
+        result.extend(run2[j:])
+        return result
 
-    if runs:
-        os.rename(runs[0], output_file)
+    with open(input_file, 'r') as f:
+        data = list(map(int, f.read().split()))
+
+    run_size = 1
+    while run_size < len(data):
+        runs = distribute_runs(data, run_size)
+        data = []
+        for i in range(0, len(runs) - 1, 2):
+            data.extend(merge_runs(runs[i], runs[i + 1]))
+        if len(runs) % 2 == 1:  # Nếu còn Run lẻ, thêm vào cuối
+            data.extend(runs[-1])
+        run_size *= 2
+
+    with open(output_file, 'w') as f:
+        f.write(' '.join(map(str, data)))
 
 
-def balanced_multiway_merge(input_file, temp_dir, output_file, memory_limit=100, num_ways=3):
-    """
-    Phương pháp trộn đa lối cân bằng (Balanced Multiway Merge).
-    """
-    runs = create_runs(input_file, temp_dir, memory_limit)
 
-    while len(runs) > 1:
-        new_runs = []
-        for i in range(0, len(runs), num_ways):
-            ways = runs[i:i + num_ways]
-            if len(ways) > 1:
-                merged_file = os.path.join(temp_dir, f'balanced_merged_run_{len(new_runs)}.txt')
-                multiway_merge(ways, merged_file, temp_dir)
-                new_runs.append(merged_file)
+# 2. Natural Merge Sort
+def natural_merge_sort(input_file, output_file):
+    def split_into_runs(data):
+        runs = []
+        run = [data[0]]
+        for i in range(1, len(data)):
+            if data[i] < data[i - 1]:
+                runs.append(run)
+                run = []
+            run.append(data[i])
+        runs.append(run)
+        return runs
+
+    def merge_runs(runs):
+        while len(runs) > 1:
+            merged_runs = []
+            for i in range(0, len(runs), 2):
+                if i + 1 < len(runs):
+                    merged_runs.append(merge(runs[i], runs[i + 1]))
+                else:
+                    merged_runs.append(runs[i])
+            runs = merged_runs
+        return runs[0]
+
+    def merge(run1, run2):
+        i, j = 0, 0
+        result = []
+        while i < len(run1) and j < len(run2):
+            if run1[i] < run2[j]:
+                result.append(run1[i])
+                i += 1
             else:
-                new_runs.extend(ways)
-        runs = new_runs
+                result.append(run2[j])
+                j += 1
+        result.extend(run1[i:])
+        result.extend(run2[j:])
+        return result
 
-    if runs:
-        os.rename(runs[0], output_file)
+    with open(input_file, 'r') as f:
+        data = list(map(int, f.read().split()))
 
+    runs = split_into_runs(data)
+    sorted_data = merge_runs(runs)
 
-def multiway_merge(files, output_file, temp_dir):
-    """
-    Trộn nhiều file cùng lúc sử dụng heap.
-    """
-    try:
-        file_handles = [open(f, 'r') for f in files]
-        heap = []
-
-        # Nạp phần tử đầu tiên từ mỗi file
-        for i, f in enumerate(file_handles):
-            line = f.readline().strip()
-            if line:
-                try:
-                    heapq.heappush(heap, (int(line), i))
-                except ValueError:
-                    continue
-
-        with open(output_file, 'w') as out:
-            while heap:
-                value, file_index = heapq.heappop(heap)
-                out.write(f"{value}\n")
-
-                # Đọc phần tử tiếp theo từ file
-                line = file_handles[file_index].readline().strip()
-                if line:
-                    try:
-                        heapq.heappush(heap, (int(line), file_index))
-                    except ValueError:
-                        continue
-
-        for f in file_handles:
-            f.close()
-    except IOError:
-        print(f"Lỗi: Không thể ghi hoặc đọc file {output_file}")
+    with open(output_file, 'w') as f:
+        f.write(' '.join(map(str, sorted_data)))
 
 
-def multipass_merge_sort(input_file, temp_dir, output_file, memory_limit=100):
-    """
-    Phương pháp trộn đa pha (Multipass Merge).
-    """
-    runs = create_runs(input_file, temp_dir, memory_limit)
-    
-    pass_count = 0
-    while len(runs) > 1:
-        new_runs = []
-        pass_count += 1
+def balanced_multiway_merge(input_file, output_file, num_ways):
+    import heapq
 
-        for i in range(0, len(runs), 2):
-            if i + 1 < len(runs):
-                merged_file = os.path.join(temp_dir, f'multipass_run_{pass_count}_{len(new_runs)}.txt')
-                merge_two_files(runs[i], runs[i + 1], merged_file)
-                new_runs.append(merged_file)
-            else:
-                new_runs.append(runs[i])
+    def distribute_runs(data, num_ways):
+        runs = [[] for _ in range(num_ways)]
+        for i, val in enumerate(data):
+            runs[i % num_ways].append(val)
+        return runs
 
-        runs = new_runs
+    def merge_runs(input_runs, num_ways):
+        while len(input_runs) > 1:
+            next_runs = []
+            for i in range(0, len(input_runs), num_ways):
+                merged = list(heapq.merge(*input_runs[i:i + num_ways]))
+                next_runs.append(merged)
+            input_runs = next_runs
+        return input_runs[0]
 
-    if runs:
-        os.rename(runs[0], output_file)
+    with open(input_file, 'r') as f:
+        data = list(map(int, f.read().split()))
+
+    runs = distribute_runs(sorted(data), num_ways)
+    sorted_data = merge_runs(runs, num_ways)
+    with open(output_file, 'w') as f:
+        f.write(' '.join(map(str, sorted_data)))
 
 
-# Tạo file dữ liệu mẫu
-input_file = 'input.txt'
-output_file = 'output.txt'
-temp_dir = 'temp_files'
 
-# Tạo dữ liệu đầu vào mẫu
-with open(input_file, 'w') as f:
-    import random
-    numbers = [random.randint(1, 10000) for _ in range(500)]
-    for num in numbers:
-        f.write(f"{num}\n")
+def multi_phase_merge_sort(input_file, output_file):
+    import heapq
 
-print("Phương pháp trộn tự nhiên:")
-natural_merge_sort(input_file, temp_dir, output_file, memory_limit=50)
-print("Phương pháp trộn đa lối cân bằng:")
-balanced_multiway_merge(input_file, temp_dir, output_file, memory_limit=50, num_ways=3)
-print("Phương pháp trộn đa pha:")
-multipass_merge_sort(input_file, temp_dir, output_file, memory_limit=50)
+    def fibonacci_sequence(n):
+        fib = [1, 1]
+        while sum(fib) < n:
+            fib.append(fib[-1] + fib[-2])
+        return fib
+
+    def distribute_runs(data, fib):
+        runs = []
+        start = 0
+        for length in fib:
+            if start >= len(data):
+                break
+            runs.append(data[start:start + length])
+            start += length
+        return runs
+
+    def merge_runs(runs):
+        while len(runs) > 1:
+            next_runs = []
+            for i in range(0, len(runs) - 1, 2):
+                next_runs.append(list(heapq.merge(runs[i], runs[i + 1])))
+            if len(runs) % 2 == 1:
+                next_runs.append(runs[-1])
+            runs = next_runs
+        return runs[0]
+
+    with open(input_file, 'r') as f:
+        data = list(map(int, f.read().split()))
+    fib = fibonacci_sequence(len(data))
+    runs = distribute_runs(sorted(data), fib)
+    sorted_data = merge_runs(runs)
+    with open(output_file, 'w') as f:
+        f.write(' '.join(map(str, sorted_data)))
+
+
+
+# Test cases
+if __name__ == "__main__":
+    input_file = "input.txt"
+    output_file = "output.txt"
+
+    # Sample data
+    with open(input_file, 'w') as f:
+        f.write("10 20 5 3 8 12 25 7")
+
+    # Test Run Sort
+    run_sort(input_file, "output1.txt")
+    print("Run Sort result written to", output_file)
+
+    # Test Natural Merge Sort
+    natural_merge_sort(input_file, "output2.txt")
+    print("Natural Merge Sort result written to", output_file)
+
+    # Test Balanced Multiway Merge Sort
+    balanced_multiway_merge(input_file, "output33.txt", 3)
+    print("Balanced Multiway Merge Sort result written to", output_file)
+
+    # Test Multi-phase Merge Sort
+    multi_phase_merge_sort(input_file, "output44.txt")
+    print("Multi-phase Merge Sort result written to", output_file)

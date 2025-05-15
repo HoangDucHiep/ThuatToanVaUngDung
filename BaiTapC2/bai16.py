@@ -12,6 +12,4 @@ def count_chars(s):
     
     return result
 
-# Test examples
 print(count_chars("aacccd"))  # ['a 2', 'c 3', 'd 1']
-print(count_chars("aabbbca"))  # ['a 3', 'b 3', 'c 1']

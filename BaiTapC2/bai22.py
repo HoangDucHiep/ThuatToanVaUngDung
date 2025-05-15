@@ -8,7 +8,6 @@ def merge_products(A, B):
         result.append(product not in product_count)
     return result
 
-# Test case
 A = ["Banana", "Banana", "Apple"]
 B = ["Orange", "Apple", "Banana", "Watermelon"]
 print(merge_products(A, B))  # [True, False, False, True]
